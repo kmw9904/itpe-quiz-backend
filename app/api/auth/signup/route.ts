@@ -5,9 +5,6 @@ import { fail, getClientIp, getUserAgent } from "@/lib/http";
 import { hashPassword } from "@/lib/password";
 import { createAuthSession } from "@/lib/auth";
 import { setRefreshCookie } from "@/lib/cookies";
-import { mergeLocalSnapshotTx } from "@/lib/import-local-data";
-
-type Tx = Parameters<typeof mergeLocalSnapshotTx>[0];
 
 const signupSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -35,7 +32,7 @@ export async function POST(request: Request) {
     const ipAddress = getClientIp(request);
     const userAgent = getUserAgent(request);
 
-    const result = await prisma.$transaction(async (tx: Tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: {
           email: body.email,
