@@ -7,6 +7,8 @@ import { createAuthSession } from "@/lib/auth";
 import { setRefreshCookie } from "@/lib/cookies";
 import { mergeLocalSnapshotTx } from "@/lib/import-local-data";
 
+type Tx = Parameters<typeof mergeLocalSnapshotTx>[0];
+
 const signupSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8, "비밀번호는 최소 8자 이상이어야 합니다."),
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
     const ipAddress = getClientIp(request);
     const userAgent = getUserAgent(request);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Tx) => {
       const user = await tx.user.create({
         data: {
           email: body.email,
@@ -49,23 +51,18 @@ export async function POST(request: Request) {
       });
 
       if (body.localSnapshot) {
-        try {
-          console.log("[signup] localSnapshot import start");
+        console.log("[signup] localSnapshot import start");
 
-          await mergeLocalSnapshotTx(tx, {
-            userId: user.id,
-            localSnapshot: body.localSnapshot,
-            deviceId: body.deviceId,
-            importVersion: body.importVersion ?? 1,
-            source: "signup-inline-import",
-            writeMigrationLog: true,
-          });
+        await mergeLocalSnapshotTx(tx, {
+          userId: user.id,
+          localSnapshot: body.localSnapshot,
+          deviceId: body.deviceId,
+          importVersion: body.importVersion ?? 1,
+          source: "signup-inline-import",
+          writeMigrationLog: true,
+        });
 
-          console.log("[signup] localSnapshot import success");
-        } catch (error) {
-          console.error("[signup] localSnapshot import failed", error);
-          throw error;
-        }
+        console.log("[signup] localSnapshot import success");
       }
 
       const tokens = await createAuthSession(tx, user, {
@@ -84,7 +81,11 @@ export async function POST(request: Request) {
       refreshToken: result.tokens.refreshToken,
     });
 
-    setRefreshCookie(response, result.tokens.refreshToken, result.tokens.refreshTokenExpiresAt);
+    setRefreshCookie(
+      response,
+      result.tokens.refreshToken,
+      result.tokens.refreshTokenExpiresAt,
+    );
 
     return response;
   } catch (error) {
