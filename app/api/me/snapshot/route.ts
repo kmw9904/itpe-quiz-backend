@@ -1,13 +1,7 @@
 import { z } from "zod";
-import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
 import { buildSnapshotForUser } from "@/lib/snapshot";
-import { mergeLocalSnapshotTx } from "@/lib/import-local-data";
-
-const updateSchema = z.object({
-  localSnapshot: z.unknown(),
-});
 
 export async function GET(request: Request) {
   try {
@@ -31,6 +25,6 @@ export async function GET(request: Request) {
 export async function PUT() {
   return fail(
     400,
-    "snapshot 전체 업로드는 더 이상 사용하지 않습니다. stars / question-progress / exam-attempts / in-progress API를 사용하세요.",
+    "snapshot 전체 업로드는 더 이상 사용하지 않습니다. /api/migration/import-local 또는 개별 progress API를 사용하세요.",
   );
 }

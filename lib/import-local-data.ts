@@ -1,49 +1,26 @@
-import type { Prisma } from "@prisma/client";
-import { normalizeLocalSnapshot, toJson, toPrismaExamId } from "@/lib/local-data";
+import { prisma } from "@/lib/db";
+import {
+  normalizeLocalSnapshot,
+  toJson,
+  toPrismaExamId,
+} from "@/lib/local-data";
 
-type Tx = Prisma.TransactionClient;
-
-type ImportOptions = {
-  userId: string;
-  localSnapshot: unknown;
-  deviceId?: string | null;
-  importVersion?: number;
-  source?: string;
-  writeMigrationLog?: boolean;
-  preventDuplicateImport?: boolean;
-};
-
-export async function mergeLocalSnapshotTx(tx: Tx, options: ImportOptions) {
-  const snapshot = normalizeLocalSnapshot(options.localSnapshot);
-
-  if (options.writeMigrationLog && options.preventDuplicateImport) {
-    const existing = await tx.migrationLog.findFirst({
-      where: {
-        userId: options.userId,
-        deviceId: options.deviceId ?? null,
-        importVersion: options.importVersion ?? 1,
-      },
-    });
-
-    if (existing) {
-      return {
-        imported: false,
-        reason: "already_imported",
-        snapshot,
-      } as const;
-    }
-  }
+export async function importLocalSnapshotSafe(
+  userId: string,
+  localSnapshot: unknown,
+) {
+  const snapshot = normalizeLocalSnapshot(localSnapshot);
 
   const starredRows = (["itpe", "bigdata", "gov"] as const).flatMap((examId) =>
     snapshot.userState.starredIdsByExam[examId].map((questionId) => ({
-      userId: options.userId,
+      userId,
       examId: toPrismaExamId(examId),
       questionId,
     })),
   );
 
   if (starredRows.length > 0) {
-    await tx.starredQuestion.createMany({
+    await prisma.starredQuestion.createMany({
       data: starredRows,
       skipDuplicates: true,
     });
@@ -51,31 +28,33 @@ export async function mergeLocalSnapshotTx(tx: Tx, options: ImportOptions) {
 
   const wrongRows = (["itpe", "bigdata", "gov"] as const).flatMap((examId) =>
     snapshot.userState.wrongIdsByExam[examId].map((questionId) => ({
-      userId: options.userId,
+      userId,
       examId: toPrismaExamId(examId),
       questionId,
     })),
   );
 
   if (wrongRows.length > 0) {
-    await tx.wrongQuestion.createMany({
+    await prisma.wrongQuestion.createMany({
       data: wrongRows,
       skipDuplicates: true,
     });
   }
 
   for (const examId of ["itpe", "bigdata", "gov"] as const) {
-    for (const [questionId, stat] of Object.entries(snapshot.userState.questionStatsByExam[examId])) {
-      await tx.questionStat.upsert({
+    for (const [questionId, stat] of Object.entries(
+      snapshot.userState.questionStatsByExam[examId],
+    )) {
+      await prisma.questionStat.upsert({
         where: {
           userId_examId_questionId: {
-            userId: options.userId,
+            userId,
             examId: toPrismaExamId(examId),
             questionId,
           },
         },
         create: {
-          userId: options.userId,
+          userId,
           examId: toPrismaExamId(examId),
           questionId,
           solvedCount: stat.solvedCount,
@@ -104,17 +83,17 @@ export async function mergeLocalSnapshotTx(tx: Tx, options: ImportOptions) {
   }
 
   for (const result of snapshot.userState.examResults) {
-    const examResult = await tx.examResult.upsert({
+    const examResult = await prisma.examResult.upsert({
       where: {
         userId_examId_year_round: {
-          userId: options.userId,
+          userId,
           examId: toPrismaExamId(result.examId),
           year: result.year,
           round: result.round,
         },
       },
       create: {
-        userId: options.userId,
+        userId,
         examId: toPrismaExamId(result.examId),
         year: result.year,
         round: result.round,
@@ -126,7 +105,7 @@ export async function mergeLocalSnapshotTx(tx: Tx, options: ImportOptions) {
     });
 
     for (const attempt of result.attempts) {
-      await tx.examAttempt.upsert({
+      await prisma.examAttempt.upsert({
         where: {
           examResultId_attemptNo: {
             examResultId: examResult.id,
@@ -141,8 +120,12 @@ export async function mergeLocalSnapshotTx(tx: Tx, options: ImportOptions) {
           passed: attempt.passed,
           wrongQids: attempt.wrongQids,
           createdAt: new Date(attempt.createdAt),
-          subjectScores: attempt.subjectScores ? toJson(attempt.subjectScores) : undefined,
-          perQuestionSnapshot: attempt.perQuestionSnapshot ? toJson(attempt.perQuestionSnapshot) : undefined,
+          subjectScores: attempt.subjectScores
+            ? toJson(attempt.subjectScores)
+            : undefined,
+          perQuestionSnapshot: attempt.perQuestionSnapshot
+            ? toJson(attempt.perQuestionSnapshot)
+            : undefined,
         },
         update: {
           score: attempt.score,
@@ -150,29 +133,35 @@ export async function mergeLocalSnapshotTx(tx: Tx, options: ImportOptions) {
           passed: attempt.passed,
           wrongQids: attempt.wrongQids,
           createdAt: new Date(attempt.createdAt),
-          subjectScores: attempt.subjectScores ? toJson(attempt.subjectScores) : undefined,
-          perQuestionSnapshot: attempt.perQuestionSnapshot ? toJson(attempt.perQuestionSnapshot) : undefined,
+          subjectScores: attempt.subjectScores
+            ? toJson(attempt.subjectScores)
+            : undefined,
+          perQuestionSnapshot: attempt.perQuestionSnapshot
+            ? toJson(attempt.perQuestionSnapshot)
+            : undefined,
         },
       });
     }
   }
 
   if (snapshot.inProgress) {
-    await tx.inProgressSession.upsert({
+    await prisma.inProgressSession.upsert({
       where: {
         userId_examId_mode: {
-          userId: options.userId,
+          userId,
           examId: toPrismaExamId(snapshot.inProgress.examId),
           mode: snapshot.inProgress.mode,
         },
       },
       create: {
-        userId: options.userId,
+        userId,
         examId: toPrismaExamId(snapshot.inProgress.examId),
         mode: snapshot.inProgress.mode,
         deckIds: snapshot.inProgress.deckIds,
         index: snapshot.inProgress.index,
-        activeExam: snapshot.inProgress.activeExam ? toJson(snapshot.inProgress.activeExam) : undefined,
+        activeExam: snapshot.inProgress.activeExam
+          ? toJson(snapshot.inProgress.activeExam)
+          : undefined,
         perQuestion: toJson(snapshot.inProgress.perQuestion),
         examSessionWrongQids: snapshot.inProgress.examSessionWrongQids ?? [],
         savedAt: new Date(snapshot.inProgress.savedAt),
@@ -180,7 +169,9 @@ export async function mergeLocalSnapshotTx(tx: Tx, options: ImportOptions) {
       update: {
         deckIds: snapshot.inProgress.deckIds,
         index: snapshot.inProgress.index,
-        activeExam: snapshot.inProgress.activeExam ? toJson(snapshot.inProgress.activeExam) : undefined,
+        activeExam: snapshot.inProgress.activeExam
+          ? toJson(snapshot.inProgress.activeExam)
+          : undefined,
         perQuestion: toJson(snapshot.inProgress.perQuestion),
         examSessionWrongQids: snapshot.inProgress.examSessionWrongQids ?? [],
         savedAt: new Date(snapshot.inProgress.savedAt),
@@ -188,19 +179,5 @@ export async function mergeLocalSnapshotTx(tx: Tx, options: ImportOptions) {
     });
   }
 
-  if (options.writeMigrationLog) {
-    await tx.migrationLog.create({
-      data: {
-        userId: options.userId,
-        deviceId: options.deviceId ?? null,
-        importVersion: options.importVersion ?? 1,
-        source: options.source ?? "signup-local-import",
-      },
-    });
-  }
-
-  return {
-    imported: true,
-    snapshot,
-  } as const;
+  return snapshot;
 }
