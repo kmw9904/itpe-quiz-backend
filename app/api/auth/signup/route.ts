@@ -49,14 +49,23 @@ export async function POST(request: Request) {
       });
 
       if (body.localSnapshot) {
-        await mergeLocalSnapshotTx(tx, {
-          userId: user.id,
-          localSnapshot: body.localSnapshot,
-          deviceId: body.deviceId,
-          importVersion: body.importVersion ?? 1,
-          source: "signup-inline-import",
-          writeMigrationLog: true,
-        });
+        try {
+          console.log("[signup] localSnapshot import start");
+
+          await mergeLocalSnapshotTx(tx, {
+            userId: user.id,
+            localSnapshot: body.localSnapshot,
+            deviceId: body.deviceId,
+            importVersion: body.importVersion ?? 1,
+            source: "signup-inline-import",
+            writeMigrationLog: true,
+          });
+
+          console.log("[signup] localSnapshot import success");
+        } catch (error) {
+          console.error("[signup] localSnapshot import failed", error);
+          throw error;
+        }
       }
 
       const tokens = await createAuthSession(tx, user, {
