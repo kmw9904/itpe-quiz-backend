@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ExamId {
+  itpe
+  bigdata
+  gov
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  passwordHash       String
+  nickname           String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  refreshTokens      RefreshToken[]
+  migrationLogs      MigrationLog[]
+  starredQuestions   StarredQuestion[]
+  wrongQuestions     WrongQuestion[]
+  questionStats      QuestionStat[]
+  examResults        ExamResult[]
+  inProgressSessions InProgressSession[]
+}
+
+model RefreshToken {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash         String    @unique
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  replacedByTokenId String?
+  userAgent         String?
+  ipAddress         String?
+  createdAt         DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model MigrationLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId      String?
+  importVersion Int      @default(1)
+  source        String   @default("signup-local-import")
+  importedAt    DateTime @default(now())
+
+  @@index([userId, importedAt])
+  @@unique([userId, deviceId, importVersion])
+}
+
+model StarredQuestion {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examId     ExamId
+  questionId String
+  createdAt  DateTime @default(now())
+
+  @@index([userId, examId])
+  @@unique([userId, examId, questionId])
+}
+
+model WrongQuestion {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examId     ExamId
+  questionId String
+  createdAt  DateTime @default(now())
+
+  @@index([userId, examId])
+  @@unique([userId, examId, questionId])
+}
+
+model QuestionStat {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examId        ExamId
+  questionId    String
+  solvedCount   Int      @default(0)
+  wrongCount    Int      @default(0)
+  correctStreak Int      @default(0)
+  lastSolvedAt  DateTime?
+  nextReviewAt  DateTime?
+  year          Int
+  round         Int
+  type          String
+  subjectType   Int?
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId, examId])
+  @@unique([userId, examId, questionId])
+}
+
+model ExamResult {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examId    ExamId
+  year      Int
+  round     Int
+  updatedAt DateTime      @default(now())
+  attempts  ExamAttempt[]
+
+  @@index([userId, examId])
+  @@unique([userId, examId, year, round])
+}
+
+model ExamAttempt {
+  id                  String     @id @default(cuid())
+  examResultId        String
+  examResult          ExamResult @relation(fields: [examResultId], references: [id], onDelete: Cascade)
+  attemptNo           Int
+  score               Int
+  total               Int
+  passed              Boolean
+  wrongQids           String[]
+  createdAt           DateTime
+  subjectScores       Json?
+  perQuestionSnapshot Json?
+
+  @@unique([examResultId, attemptNo])
+}
+
+model InProgressSession {
+  id                   String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examId               ExamId
+  mode                 String
+  deckIds              String[]
+  index                Int
+  activeExam           Json?
+  perQuestion          Json?
+  examSessionWrongQids String[]
+  savedAt              DateTime @default(now())
+
+  @@index([userId, savedAt])
+  @@unique([userId, examId, mode])
+}
