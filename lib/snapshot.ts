@@ -80,9 +80,9 @@ export async function buildSnapshotForUser(userId: string): Promise<LocalSnapsho
 
   const userState: UserStateInput = {
     ...DEFAULT_USER_STATE,
-    starredIdsByExam: { itpe: [], bigdata: [], gov: [] },
-    wrongIdsByExam: { itpe: [], bigdata: [], gov: [] },
-    questionStatsByExam: { itpe: {}, bigdata: {}, gov: {} },
+    starredIdsByExam: { itpe: [], bigdata: [], gov: [], network: [] },
+    wrongIdsByExam: { itpe: [], bigdata: [], gov: [], network: [] },
+    questionStatsByExam: { itpe: {}, bigdata: {}, gov: {}, network: {} },
     examResults: [],
   };
 
@@ -145,7 +145,7 @@ export async function buildSnapshotForUser(userId: string): Promise<LocalSnapsho
           activeExam:
             latestSession.activeExam && typeof latestSession.activeExam === "object" && !Array.isArray(latestSession.activeExam)
               ? {
-                  examId: String((latestSession.activeExam as Record<string, unknown>).examId ?? "itpe") as "itpe" | "bigdata" | "gov",
+                  examId: String((latestSession.activeExam as Record<string, unknown>).examId ?? "itpe") as "itpe" | "bigdata" | "gov" | "network",
                   year: Number((latestSession.activeExam as Record<string, unknown>).year ?? 0),
                   round: Number((latestSession.activeExam as Record<string, unknown>).round ?? 0),
                 }
