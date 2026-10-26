@@ -11,7 +11,7 @@ export async function importLocalSnapshotSafe(
 ) {
   const snapshot = normalizeLocalSnapshot(localSnapshot);
 
-  const starredRows = (["itpe", "bigdata", "gov"] as const).flatMap((examId) =>
+  const starredRows = (["itpe", "bigdata", "gov", "network"] as const).flatMap((examId) =>
     snapshot.userState.starredIdsByExam[examId].map((questionId) => ({
       userId,
       examId: toPrismaExamId(examId),
@@ -26,7 +26,7 @@ export async function importLocalSnapshotSafe(
     });
   }
 
-  const wrongRows = (["itpe", "bigdata", "gov"] as const).flatMap((examId) =>
+  const wrongRows = (["itpe", "bigdata", "gov", "network"] as const).flatMap((examId) =>
     snapshot.userState.wrongIdsByExam[examId].map((questionId) => ({
       userId,
       examId: toPrismaExamId(examId),
@@ -41,7 +41,7 @@ export async function importLocalSnapshotSafe(
     });
   }
 
-  for (const examId of ["itpe", "bigdata", "gov"] as const) {
+  for (const examId of ["itpe", "bigdata", "gov", "network"] as const) {
     for (const [questionId, stat] of Object.entries(
       snapshot.userState.questionStatsByExam[examId],
     )) {
