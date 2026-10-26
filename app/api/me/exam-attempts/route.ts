@@ -5,7 +5,7 @@ import { fail } from "@/lib/http";
 import { toJson } from "@/lib/local-data";
 
 const attemptSchema = z.object({
-  examId: z.enum(["itpe", "bigdata", "gov"]),
+  examId: z.enum(["itpe", "bigdata", "gov", "network"]),
   year: z.number().int().positive(),
   round: z.number().int().positive(),
   attempt: z.object({
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     const rows = await prisma.examResult.findMany({
       where: {
         userId: user.id,
-        ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" } : {}),
+        ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" | "network" } : {}),
       },
       include: {
         attempts: {
