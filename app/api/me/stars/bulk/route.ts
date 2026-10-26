@@ -7,13 +7,14 @@ const groupedSchema = z.object({
   itpe: z.array(z.string()).default([]),
   bigdata: z.array(z.string()).default([]),
   gov: z.array(z.string()).default([]),
+  network: z.array(z.string()).default([]),
 });
 
 const bulkSchema = z.object({
   grouped: groupedSchema,
 });
 
-const EXAMS = ["itpe", "bigdata", "gov"] as const;
+const EXAMS = ["itpe", "bigdata", "gov", "network"] as const;
 
 function uniqueStrings(values: string[]) {
   return [
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
       itpe: uniqueStrings(body.grouped.itpe),
       bigdata: uniqueStrings(body.grouped.bigdata),
       gov: uniqueStrings(body.grouped.gov),
+      network: uniqueStrings(body.grouped.network),
     };
 
     await prisma.starredQuestion.deleteMany({
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
         itpe: grouped.itpe.length,
         bigdata: grouped.bigdata.length,
         gov: grouped.gov.length,
+        network: grouped.network.length,
         total: rows.length,
       },
     });
