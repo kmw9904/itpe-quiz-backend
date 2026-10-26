@@ -23,7 +23,7 @@ const attemptSchema = z.object({
 });
 
 const examResultSchema = z.object({
-  examId: z.enum(["itpe", "bigdata", "gov"]),
+  examId: z.enum(["itpe", "bigdata", "gov", "network"]),
   year: z.number().int().positive(),
   round: z.number().int().positive(),
   updatedAt: z.number().int().positive(),
