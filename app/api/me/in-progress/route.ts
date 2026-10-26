@@ -9,7 +9,7 @@ const upsertSchema = z.object({
 });
 
 const deleteSchema = z.object({
-  examId: z.enum(["itpe", "bigdata", "gov"]).optional(),
+  examId: z.enum(["itpe", "bigdata", "gov", "network"]).optional(),
   mode: z.string().optional(),
 });
 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const rows = await prisma.inProgressSession.findMany({
       where: {
         userId: user.id,
-        ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" } : {}),
+        ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" | "network" } : {}),
         ...(mode ? { mode } : {}),
       },
       orderBy: { savedAt: "desc" },
