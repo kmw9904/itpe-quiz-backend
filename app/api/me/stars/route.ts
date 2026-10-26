@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
 
 const writeSchema = z.object({
-  examId: z.enum(["itpe", "bigdata", "gov"]),
+  examId: z.enum(["itpe", "bigdata", "gov", "network"]),
   questionId: z.string().trim().min(1),
 });
 
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     const rows = await prisma.starredQuestion.findMany({
       where: {
         userId: user.id,
-        ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" } : {}),
+        ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" | "network" } : {}),
       },
       orderBy: { createdAt: "asc" },
     });
@@ -29,6 +29,7 @@ export async function GET(request: Request) {
         itpe: rows.filter((item) => item.examId === "itpe").map((item) => item.questionId),
         bigdata: rows.filter((item) => item.examId === "bigdata").map((item) => item.questionId),
         gov: rows.filter((item) => item.examId === "gov").map((item) => item.questionId),
+        network: rows.filter((item) => item.examId === "network").map((item) => item.questionId),
       },
     });
   } catch (error) {
