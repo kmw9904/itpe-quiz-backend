@@ -12,6 +12,7 @@ enum ExamId {
   itpe
   bigdata
   gov
+  network
 }
 
 model User {
