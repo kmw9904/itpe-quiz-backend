@@ -1,6 +1,6 @@
 import type { ExamId as PrismaExamId, Prisma } from "@prisma/client";
 
-export type ExamId = "itpe" | "bigdata" | "gov";
+export type ExamId = "itpe" | "bigdata" | "gov" | "network";
 
 export type SubjectScores = {
   subject1: number;
@@ -77,10 +77,10 @@ export type LocalSnapshotInput = {
 };
 
 export const DEFAULT_USER_STATE: UserStateInput = {
-  starredIdsByExam: { itpe: [], bigdata: [], gov: [] },
-  wrongIdsByExam: { itpe: [], bigdata: [], gov: [] },
+  starredIdsByExam: { itpe: [], bigdata: [], gov: [], network: [] },
+  wrongIdsByExam: { itpe: [], bigdata: [], gov: [], network: [] },
   examResults: [],
-  questionStatsByExam: { itpe: {}, bigdata: {}, gov: {} },
+  questionStatsByExam: { itpe: {}, bigdata: {}, gov: {}, network: {} },
 };
 
 export function emptyPerQuestionProgress(): PerQuestionProgress {
@@ -95,7 +95,7 @@ export function emptyPerQuestionProgress(): PerQuestionProgress {
 }
 
 function parseExamId(value: unknown): ExamId {
-  return value === "bigdata" ? "bigdata" : value === "gov" ? "gov" : "itpe";
+  return value === "bigdata" ? "bigdata" : value === "gov" ? "gov" : value === "network" ? "network" : "itpe";
 }
 
 export function toPrismaExamId(value: ExamId): PrismaExamId {
@@ -216,6 +216,9 @@ export function normalizeUserState(input: unknown): UserStateInput {
     gov: Array.isArray((parsed as any).starredIdsByExam?.gov)
       ? (parsed as any).starredIdsByExam.gov.map((item: unknown) => String(item))
       : [],
+    network: Array.isArray((parsed as any).starredIdsByExam?.network)
+      ? (parsed as any).starredIdsByExam.network.map((item: unknown) => String(item))
+      : [],
   } satisfies Record<ExamId, string[]>;
 
   const wrongIdsByExam = {
@@ -229,6 +232,9 @@ export function normalizeUserState(input: unknown): UserStateInput {
       : [],
     gov: Array.isArray((parsed as any).wrongIdsByExam?.gov)
       ? (parsed as any).wrongIdsByExam.gov.map((item: unknown) => String(item))
+      : [],
+    network: Array.isArray((parsed as any).wrongIdsByExam?.network)
+      ? (parsed as any).wrongIdsByExam.network.map((item: unknown) => String(item))
       : [],
   } satisfies Record<ExamId, string[]>;
 
@@ -289,6 +295,7 @@ export function normalizeUserState(input: unknown): UserStateInput {
       itpe: normalizeQuestionStatsRecord((parsed as any).questionStatsByExam?.itpe),
       bigdata: normalizeQuestionStatsRecord((parsed as any).questionStatsByExam?.bigdata),
       gov: normalizeQuestionStatsRecord((parsed as any).questionStatsByExam?.gov),
+      network: normalizeQuestionStatsRecord((parsed as any).questionStatsByExam?.network),
     },
   };
 }
