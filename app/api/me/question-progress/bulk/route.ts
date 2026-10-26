@@ -19,12 +19,14 @@ const groupedWrongSchema = z.object({
   itpe: z.array(z.string()).default([]),
   bigdata: z.array(z.string()).default([]),
   gov: z.array(z.string()).default([]),
+  network: z.array(z.string()).default([]),
 });
 
 const groupedStatsSchema = z.object({
   itpe: z.record(statSchema).default({}),
   bigdata: z.record(statSchema).default({}),
   gov: z.record(statSchema).default({}),
+  network: z.record(statSchema).default({}),
 });
 
 const bulkSchema = z.object({
@@ -32,7 +34,7 @@ const bulkSchema = z.object({
   statsGrouped: groupedStatsSchema,
 });
 
-const EXAMS = ["itpe", "bigdata", "gov"] as const;
+const EXAMS = ["itpe", "bigdata", "gov", "network"] as const;
 
 function uniqueStrings(values: string[]) {
   return [
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
       itpe: uniqueStrings(body.wrongGrouped.itpe),
       bigdata: uniqueStrings(body.wrongGrouped.bigdata),
       gov: uniqueStrings(body.wrongGrouped.gov),
+      network: uniqueStrings(body.wrongGrouped.network),
     };
 
     const wrongRows = EXAMS.flatMap((examId) =>
