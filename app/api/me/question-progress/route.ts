@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
 
-const examIdSchema = z.enum(["itpe", "bigdata", "gov"]);
+const examIdSchema = z.enum(["itpe", "bigdata", "gov", "network"]);
 
 const statSchema = z.object({
   solvedCount: z.number().int().nonnegative(),
@@ -34,14 +34,14 @@ export async function GET(request: Request) {
       prisma.wrongQuestion.findMany({
         where: {
           userId: user.id,
-          ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" } : {}),
+          ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" | "network" } : {}),
         },
         orderBy: { createdAt: "asc" },
       }),
       prisma.questionStat.findMany({
         where: {
           userId: user.id,
-          ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" } : {}),
+          ...(examId ? { examId: examId as "itpe" | "bigdata" | "gov" | "network" } : {}),
         },
         orderBy: [{ examId: "asc" }, { questionId: "asc" }],
       }),
@@ -58,6 +58,9 @@ export async function GET(request: Request) {
           .map((item) => item.questionId),
         gov: wrongRows
           .filter((item) => item.examId === "gov")
+          .map((item) => item.questionId),
+        network: wrongRows
+          .filter((item) => item.examId === "network")
           .map((item) => item.questionId),
       },
       statsGrouped: {
@@ -100,6 +103,24 @@ export async function GET(request: Request) {
         gov: Object.fromEntries(
           statRows
             .filter((item) => item.examId === "gov")
+            .map((item) => [
+              item.questionId,
+              {
+                solvedCount: item.solvedCount,
+                wrongCount: item.wrongCount,
+                correctStreak: item.correctStreak,
+                lastSolvedAt: item.lastSolvedAt?.getTime() ?? 0,
+                nextReviewAt: item.nextReviewAt?.getTime(),
+                year: item.year,
+                round: item.round,
+                type: item.type,
+                subjectType: item.subjectType ?? undefined,
+              },
+            ]),
+        ),
+        network: Object.fromEntries(
+          statRows
+            .filter((item) => item.examId === "network")
             .map((item) => [
               item.questionId,
               {
