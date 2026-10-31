@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
   normalizeLocalSnapshot,
@@ -41,45 +43,42 @@ export async function importLocalSnapshotSafe(
     });
   }
 
+  // Use batched, parameterized SQL instead of hundreds of individual Prisma
+  // upserts. The old implementation exceeded Vercel's 60s execution limit
+  // for users who had worked through the ~950 network questions.
+  // Never replace a newer cloud answer with an older device answer.
   for (const examId of ["itpe", "bigdata", "gov", "network"] as const) {
     const entries=Object.entries(snapshot.userState.questionStatsByExam[examId]);
-    for (let start=0;start<entries.length;start+=12) {
-      await Promise.all(entries.slice(start,start+12).map(async ([questionId,stat])=>{
-        await prisma.questionStat.upsert({
-        where: {
-          userId_examId_questionId: {
-            userId,
-            examId: toPrismaExamId(examId),
-            questionId,
-          },
-        },
-        create: {
-          userId,
-          examId: toPrismaExamId(examId),
-          questionId,
-          solvedCount: stat.solvedCount,
-          wrongCount: stat.wrongCount,
-          correctStreak: stat.correctStreak,
-          lastSolvedAt: stat.lastSolvedAt ? new Date(stat.lastSolvedAt) : null,
-          nextReviewAt: stat.nextReviewAt ? new Date(stat.nextReviewAt) : null,
-          year: stat.year,
-          round: stat.round,
-          type: stat.type,
-          subjectType: stat.subjectType,
-        },
-        update: {
-          solvedCount: stat.solvedCount,
-          wrongCount: stat.wrongCount,
-          correctStreak: stat.correctStreak,
-          lastSolvedAt: stat.lastSolvedAt ? new Date(stat.lastSolvedAt) : null,
-          nextReviewAt: stat.nextReviewAt ? new Date(stat.nextReviewAt) : null,
-          year: stat.year,
-          round: stat.round,
-          type: stat.type,
-          subjectType: stat.subjectType,
-        },
-        });
-      }));
+    for (let start=0;start<entries.length;start+=150) {
+      const chunk=entries.slice(start,start+150);
+      if(!chunk.length)continue;
+      const rows=chunk.map(([questionId,stat])=>Prisma.sql`(
+        ${randomUUID()}, ${userId}, CAST(${examId} AS "ExamId"), ${questionId},
+        ${stat.solvedCount}, ${stat.wrongCount}, ${stat.correctStreak},
+        ${stat.lastSolvedAt ? new Date(stat.lastSolvedAt) : null},
+        ${stat.nextReviewAt ? new Date(stat.nextReviewAt) : null},
+        ${stat.year}, ${stat.round}, ${stat.type}, ${stat.subjectType??null}, NOW()
+      )`);
+      await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO "QuestionStat"
+          ("id","userId","examId","questionId","solvedCount","wrongCount",
+           "correctStreak","lastSolvedAt","nextReviewAt","year","round",
+           "type","subjectType","updatedAt")
+        VALUES ${Prisma.join(rows)}
+        ON CONFLICT ("userId","examId","questionId") DO UPDATE SET
+          "solvedCount" = EXCLUDED."solvedCount",
+          "wrongCount" = EXCLUDED."wrongCount",
+          "correctStreak" = EXCLUDED."correctStreak",
+          "lastSolvedAt" = EXCLUDED."lastSolvedAt",
+          "nextReviewAt" = EXCLUDED."nextReviewAt",
+          "year" = EXCLUDED."year",
+          "round" = EXCLUDED."round",
+          "type" = EXCLUDED."type",
+          "subjectType" = EXCLUDED."subjectType",
+          "updatedAt" = NOW()
+        WHERE "QuestionStat"."lastSolvedAt" IS NULL
+           OR EXCLUDED."lastSolvedAt" >= "QuestionStat"."lastSolvedAt"
+      `);
     }
   }
 
