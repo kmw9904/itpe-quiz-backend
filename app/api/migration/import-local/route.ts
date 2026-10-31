@@ -1,3 +1,4 @@
+export const maxDuration=60;
 import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";

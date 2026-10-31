@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
@@ -62,7 +63,7 @@ export async function PUT(request:Request) {
     const saved=await prisma.$transaction(async(tx)=>{
       const row=await tx.user.findUnique({where:{id:user.id},select:{learningData:true}});
       const data=merge(row?.learningData,body.data);
-      await tx.user.update({where:{id:user.id},data:{learningData:data}});
+      await tx.user.update({where:{id:user.id},data:{learningData:data as unknown as Prisma.InputJsonValue}});
       return data;
     });
     return Response.json({ok:true,data:saved});

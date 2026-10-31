@@ -42,10 +42,10 @@ export async function importLocalSnapshotSafe(
   }
 
   for (const examId of ["itpe", "bigdata", "gov", "network"] as const) {
-    for (const [questionId, stat] of Object.entries(
-      snapshot.userState.questionStatsByExam[examId],
-    )) {
-      await prisma.questionStat.upsert({
+    const entries=Object.entries(snapshot.userState.questionStatsByExam[examId]);
+    for (let start=0;start<entries.length;start+=12) {
+      await Promise.all(entries.slice(start,start+12).map(async ([questionId,stat])=>{
+        await prisma.questionStat.upsert({
         where: {
           userId_examId_questionId: {
             userId,
@@ -78,7 +78,8 @@ export async function importLocalSnapshotSafe(
           type: stat.type,
           subjectType: stat.subjectType,
         },
-      });
+        });
+      }));
     }
   }
 
