@@ -23,6 +23,7 @@ model User {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   learningData       Json?
+  certificationData  Json?
   refreshTokens      RefreshToken[]
   migrationLogs      MigrationLog[]
   starredQuestions   StarredQuestion[]
